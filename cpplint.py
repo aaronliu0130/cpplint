@@ -1618,10 +1618,10 @@ def ReplaceAlternateTokens(line):
     The line with alternate tokens replaced.
   """
   for match in _ALT_TOKEN_REPLACEMENT_PATTERN.finditer(line):
-    replacement = _ALT_TOKEN_REPLACEMENT[match.group(2)]
+    token = _ALT_TOKEN_REPLACEMENT[match.group(2)]
     tail = '' if match.group(2) in ['not', 'compl'] and match.group(3) == ' ' \
            else r'\3'
-    line = re.sub(match.re, r'\1{}{}'.format(replacement, tail), line, count=1)
+    line = re.sub(match.re, r'\1{}{}'.format(token, tail), line, count=1)
   return line
 
 
