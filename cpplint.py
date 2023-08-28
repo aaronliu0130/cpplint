@@ -3461,10 +3461,6 @@ def CheckForNonStandardConstructs(filename, clean_lines, linenum,
       else:
         error(filename, linenum, 'runtime/explicit', 5,
               'Single-parameter constructors should be marked explicit.')
-    elif is_marked_explicit and not onearg_constructor:
-      if noarg_constructor:
-        error(filename, linenum, 'runtime/explicit', 5,
-              'Zero-parameter constructors should not be marked explicit.')
 
 
 def CheckSpacingForFunctionCall(filename, clean_lines, linenum, error):

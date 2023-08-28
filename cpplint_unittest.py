@@ -1567,22 +1567,20 @@ class CpplintTest(CpplintTestBase):
           };""",
           'Constructors callable with one argument should be marked explicit.'
           '  [runtime/explicit] [5]')
-      # explicit no-argument constructors are bad
+      # explicit no-argument constructors are just fine
       self.TestMultiLineLint(
           """
           class Foo {
             explicit Foo();
           };""",
-          'Zero-parameter constructors should not be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '')
       # void constructors are considered no-argument
       self.TestMultiLineLint(
           """
           class Foo {
             explicit Foo(void);
           };""",
-          'Zero-parameter constructors should not be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '')
       # No warning for multi-parameter constructors
       self.TestMultiLineLint(
           """
