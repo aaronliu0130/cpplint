@@ -98,10 +98,9 @@ Syntax: cpplint.py [--verbose=#] [--output=emacs|eclipse|vs7|junit|sed|gsed]
   certain of the problem, and 1 meaning it could be a legitimate construct.
   This will miss some errors, and is not a substitute for a code review.
 
-  To suppress false-positive errors of certain categories, add a
-  'NOLINT(category[, category...])' comment to the line.  NOLINT or NOLINT(*)
-  suppresses errors of all categories on that line. To suppress categories
-  on the next line use NOLINTNEXTLINE instead of NOLINT.
+  To suppress false-positive errors of a certain category, add a
+  'NOLINT(category)' comment to the line.  NOLINT or NOLINT(*)
+  suppresses errors of all categories on that line.
 
   The files passed in will be linted; at least one file must be provided.
   Default linted extensions are %s.
@@ -409,7 +408,7 @@ _CPP_HEADERS = frozenset([
     'alloc.h',
     'builtinbuf.h',
     'bvector.h',
-    # 'complex.h', collides with System C header "complex.h"
+    'complex.h',
     'defalloc.h',
     'deque.h',
     'editbuf.h',
@@ -521,22 +520,6 @@ _CPP_HEADERS = frozenset([
     'optional',
     'string_view',
     'variant',
-    # 17.6.1.2 C++20 headers
-    'barrier',
-    'bit',
-    'compare',
-    'concepts',
-    'coroutine',
-    'format',
-    'latch'
-    'numbers',
-    'ranges',
-    'semaphore',
-    'source_location',
-    'span',
-    'stop_token',
-    'syncstream',
-    'version',
     # 17.6.1.2 C++ headers for C library facilities
     'cassert',
     'ccomplex',
@@ -1002,11 +985,12 @@ def ParseNolintSuppressions(filename, raw_line, linenum, error):
       suppressed_line = linenum + 1
     else:
       suppressed_line = linenum
-    categories = matched.group(2)
-    if categories in (None, '(*)'):  # => "suppress all"
+    category = matched.group(2)
+    if category in (None, '(*)'):  # => "suppress all"
       _error_suppressions.setdefault(None, set()).add(suppressed_line)
-    elif categories.startswith('(') and categories.endswith(')'):
-      for category in set(map(lambda c: c.strip(), categories[1:-1].split(','))):
+    else:
+      if category.startswith('(') and category.endswith(')'):
+        category = category[1:-1]
         if category in _ERROR_CATEGORIES:
           _error_suppressions.setdefault(category, set()).add(suppressed_line)
         elif any(c for c in _OTHER_NOLINT_CATEGORY_PREFIXES if category.startswith(c)):
@@ -3561,11 +3545,27 @@ def IsBlankLine(line):
 
 def CheckForNamespaceIndentation(filename, nesting_state, clean_lines, line,
                                  error):
+  # Plain Source Code
+  # is_namespace_indent_item = (
+  #     len(nesting_state.stack) > 1 and
+  #     nesting_state.stack[-1].check_namespace_indentation and
+  #     isinstance(nesting_state.previous_stack_top, _NamespaceInfo) and
+  #     nesting_state.previous_stack_top == nesting_state.stack[-2])
+
   is_namespace_indent_item = (
-      len(nesting_state.stack) > 1 and
-      nesting_state.stack[-1].check_namespace_indentation and
-      isinstance(nesting_state.previous_stack_top, _NamespaceInfo) and
-      nesting_state.previous_stack_top == nesting_state.stack[-2])
+      len(nesting_state.stack) >= 1 and
+      (isinstance(nesting_state.stack[-1], _NamespaceInfo) or (isinstance(nesting_state.previous_stack_top, _NamespaceInfo)))
+      )
+
+  # print(str(line) + " line content : " + str(clean_lines.elided[line]))
+  # print("len(nesting_state.stack) : " + str(len(nesting_state.stack)))
+  # if (len(nesting_state.stack)):
+  #   print("nesting_state.stack[-1] : " + str(nesting_state.stack[-1]))
+  #   print("nesting_state.stack[-1].check_namespace_indentation : " + str(nesting_state.stack[-1].check_namespace_indentation))
+  # print("isinstance(nesting_state.previous_stack_top, _NamespaceInfo) : " + str(isinstance(nesting_state.previous_stack_top, _NamespaceInfo)))
+  # if (len(nesting_state.stack) > 1):
+  #   print("nesting_state.previous_stack_top == nesting_state.stack[-2]) : " + str(nesting_state.previous_stack_top == nesting_state.stack[-2]))
+  # print("is_namespace_indent_item : " + str(is_namespace_indent_item))
 
   if ShouldCheckNamespaceIndentation(nesting_state, is_namespace_indent_item,
                                      clean_lines.elided, line):
@@ -5116,7 +5116,7 @@ def CheckIncludeLine(filename, clean_lines, linenum, include_state, error):
   match = _RE_PATTERN_INCLUDE.search(line)
   if match:
     include = match.group(2)
-    used_angle_brackets = match.group(1) == '<'
+    used_angle_brackets = (match.group(1) == '<')
     duplicate_line = include_state.FindHeader(include)
     if duplicate_line >= 0:
       error(filename, linenum, 'build/include', 4,
@@ -6324,9 +6324,19 @@ def IsBlockInNameSpace(nesting_state, is_forward_declaration):
       isinstance(nesting_state.stack[-1], _NamespaceInfo))
 
 
-  return (len(nesting_state.stack) > 1 and
-          nesting_state.stack[-1].check_namespace_indentation and
-          isinstance(nesting_state.stack[-2], _NamespaceInfo))
+  # return (len(nesting_state.stack) > 1 and
+  #         nesting_state.stack[-1].check_namespace_indentation and
+  #         isinstance(nesting_state.stack[-2], _NamespaceInfo))
+
+  if (len(nesting_state.stack) >= 1):
+    if (isinstance(nesting_state.stack[-1], _NamespaceInfo)):
+      return True
+    elif (len(nesting_state.stack) > 1 and 
+          isinstance(nesting_state.previous_stack_top, _NamespaceInfo) and
+          isinstance(nesting_state.stack[-2], _NamespaceInfo)):
+      return True
+    
+  return False
 
 
 def ShouldCheckNamespaceIndentation(nesting_state, is_namespace_indent_item,
