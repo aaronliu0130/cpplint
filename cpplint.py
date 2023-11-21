@@ -3557,16 +3557,6 @@ def CheckForNamespaceIndentation(filename, nesting_state, clean_lines, line,
       (isinstance(nesting_state.stack[-1], _NamespaceInfo) or (isinstance(nesting_state.previous_stack_top, _NamespaceInfo)))
       )
 
-  # print(str(line) + " line content : " + str(clean_lines.elided[line]))
-  # print("len(nesting_state.stack) : " + str(len(nesting_state.stack)))
-  # if (len(nesting_state.stack)):
-  #   print("nesting_state.stack[-1] : " + str(nesting_state.stack[-1]))
-  #   print("nesting_state.stack[-1].check_namespace_indentation : " + str(nesting_state.stack[-1].check_namespace_indentation))
-  # print("isinstance(nesting_state.previous_stack_top, _NamespaceInfo) : " + str(isinstance(nesting_state.previous_stack_top, _NamespaceInfo)))
-  # if (len(nesting_state.stack) > 1):
-  #   print("nesting_state.previous_stack_top == nesting_state.stack[-2]) : " + str(nesting_state.previous_stack_top == nesting_state.stack[-2]))
-  # print("is_namespace_indent_item : " + str(is_namespace_indent_item))
-
   if ShouldCheckNamespaceIndentation(nesting_state, is_namespace_indent_item,
                                      clean_lines.elided, line):
     CheckItemIndentationInNamespace(filename, clean_lines.elided,
