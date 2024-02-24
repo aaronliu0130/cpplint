@@ -1,3 +1,4 @@
 set noparent
 filter=-build/namespaces, -whitespace,+whitespace/line_length,-build/include_what_you_use
-linelength=84
+headers=w
+exclude_files=.*sillycode\.w

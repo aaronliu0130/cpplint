@@ -1,6 +1,6 @@
 --output=sed src/*.cpp
 1
-5
+8
 sed -i '2s/\/\//\/\/ /' src/sillycode.cpp # Should have a space between // and comment  [whitespace/comments] [4]
 sed -i '120s/,\([^ ]\)/, \1/g' src/sillycode.cpp # Missing space after ,  [whitespace/comma] [3]
 sed -i '122s/\s*$//' src/sillycode.cpp # Line ends in whitespace.  Consider deleting these extra spaces.  [whitespace/end_of_line] [4]

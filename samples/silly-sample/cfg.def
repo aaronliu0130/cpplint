@@ -1,4 +1,4 @@
---config=.cpplint *
+--config=.cpplint src/*
 1
 3
 Done processing src/sillycode.cpp
