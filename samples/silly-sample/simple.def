@@ -131,3 +131,4 @@ src/sillycode.cpp:264:  Could not find a newline character at the end of the fil
 src/sillycode.w:0:  No copyright message found.  You should have a line: "Copyright [year] <Copyright Owner>"  [legal/copyright] [5]
 src/sillycode.w:0:  No #ifndef header guard found, suggested CPP variable is: SAMPLES_SILLY_SAMPLE_SRC_SILLYCODE_W_  [build/header_guard] [5]
 src/sillycode.w:3:  Should have a space between // and comment  [whitespace/comments] [4]
+
