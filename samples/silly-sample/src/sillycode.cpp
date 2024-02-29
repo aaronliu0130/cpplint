@@ -1,5 +1,5 @@
-#include <stdckdint.omg>
-#include <ratio> //kewl headers, living the life!
+#include "stdckdint.omg"
+#include "ratio" //kewl headers, living the life!
 #include <gtest/gtest.h>
 #include <sillycode.w>  // corresponding header file
 using namespace std;

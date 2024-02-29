@@ -3,14 +3,15 @@ src/*
 4
 Done processing src/sillycode.cpp
 Done processing src/sillycode.w
-Total errors found: 126
+Total errors found: 127
 
 src/sillycode.cpp:0:  No copyright message found.  You should have a line: "Copyright [year] <Copyright Owner>"  [legal/copyright] [5]
+src/sillycode.cpp:1:  Include the directory when naming header files  [build/include_subdir] [4]
 src/sillycode.cpp:2:  At least two spaces is best between code and comments  [whitespace/comments] [2]
 src/sillycode.cpp:2:  Should have a space between // and comment  [whitespace/comments] [4]
 src/sillycode.cpp:2:  <ratio> is an unapproved C++11 header.  [build/c++11] [5]
-src/sillycode.cpp:3:  Found C system header after C++ system header. Should be: sillycode.h, c system, c++ system, other.  [build/include_order] [4]
-src/sillycode.cpp:4:  Found C system header after C++ system header. Should be: sillycode.h, c system, c++ system, other.  [build/include_order] [4]
+src/sillycode.cpp:3:  Found C system header after other header. Should be: sillycode.h, c system, c++ system, other.  [build/include_order] [4]
+src/sillycode.cpp:4:  Found C system header after other header. Should be: sillycode.h, c system, c++ system, other.  [build/include_order] [4]
 src/sillycode.cpp:5:  Do not use namespace using-directives.  Use using-declarations instead.  [build/namespaces] [5]
 src/sillycode.cpp:8:  public: should be indented +1 space inside class Date  [whitespace/indent] [3]
 src/sillycode.cpp:14:  Is this a non-const reference? If so, make const or use a pointer: vector<string>& v  [runtime/references] [2]
