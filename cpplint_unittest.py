@@ -311,8 +311,8 @@ class CpplintTest(CpplintTestBase):
              '}  // namespace Test']
 
     results = self.GetNamespaceResults(lines)
-    self.assertEquals(results, 'Do not indent within a namespace '
-                      ' [whitspace/indent_namespace] [4]')
+    self.assertEquals(results, 'Do not indent within a namespace. '
+                      ' [whitespace/indent_namespace] [4]')
 
   def testNameSpaceIndentationForClass(self):
     lines = ['namespace Test {',
@@ -322,8 +322,8 @@ class CpplintTest(CpplintTestBase):
              '}  // namespace Test']
 
     results = self.GetNamespaceResults(lines)
-    self.assertEquals(results, 'Do not indent within a namespace '
-                      ' [whitspace/indent_namespace] [4]')
+    self.assertEquals(results, 'Do not indent within a namespace. '
+                      ' [whitespace/indent_namespace] [4]')
 
   def testNameSpaceIndentationNoError(self):
     lines = ['namespace Test {',

@@ -351,7 +351,7 @@ _ERROR_CATEGORIES = [
     'whitespace/ending_newline',
     'whitespace/forcolon',
     'whitespace/indent',
-    'whitspace/indent_namespace',
+    'whitespace/indent_namespace',
     'whitespace/line_length',
     'whitespace/newline',
     'whitespace/operators',
@@ -6370,8 +6370,8 @@ def CheckItemIndentationInNamespace(filename, raw_lines_no_comments, linenum,
                                     error):
   line = raw_lines_no_comments[linenum]
   if Match(r'^\s+', line):
-    error(filename, linenum, 'whitspace/indent_namespace', 4,
-          'Do not indent within a namespace')
+    error(filename, linenum, 'whitespace/indent_namespace', 4,
+          'Do not indent within a namespace.')
 
 
 def ProcessLine(filename, file_extension, clean_lines, line,
