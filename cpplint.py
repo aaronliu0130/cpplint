@@ -3451,11 +3451,11 @@ def CheckForNonStandardConstructs(filename, clean_lines, linenum,
         not initializer_list_constructor and
         not copy_constructor):
       if defaulted_args or variadic_args:
-        error(filename, linenum, 'runtime/explicit', 5,
+        error(filename, linenum, 'runtime/explicit', 4,
               'Constructors callable with one argument '
               'should be marked explicit.')
       else:
-        error(filename, linenum, 'runtime/explicit', 5,
+        error(filename, linenum, 'runtime/explicit', 4,
               'Single-parameter constructors should be marked explicit.')
 
 

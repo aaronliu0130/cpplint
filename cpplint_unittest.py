@@ -1353,7 +1353,7 @@ class CpplintTest(CpplintTestBase):
             Foo(int f);
           };""",
           'Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # missing explicit is bad, even with whitespace
       self.TestMultiLineLint(
           """
@@ -1362,7 +1362,7 @@ class CpplintTest(CpplintTestBase):
           };""",
           ['Extra space before ( in function call  [whitespace/parens] [4]',
            'Single-parameter constructors should be marked explicit.'
-           '  [runtime/explicit] [5]'])
+           '  [runtime/explicit] [4]'])
       # missing explicit, with distracting comment, is still bad
       self.TestMultiLineLint(
           """
@@ -1370,7 +1370,7 @@ class CpplintTest(CpplintTestBase):
             Foo(int f);  // simpler than Foo(blargh, blarg)
           };""",
           'Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # missing explicit, with qualified classname
       self.TestMultiLineLint(
           """
@@ -1378,7 +1378,7 @@ class CpplintTest(CpplintTestBase):
             Foo(int f);
           };""",
           'Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # missing explicit for inline constructors is bad as well
       self.TestMultiLineLint(
           """
@@ -1386,7 +1386,7 @@ class CpplintTest(CpplintTestBase):
             inline Foo(int f);
           };""",
           'Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # missing explicit for constexpr constructors is bad as well
       self.TestMultiLineLint(
           """
@@ -1394,7 +1394,7 @@ class CpplintTest(CpplintTestBase):
             constexpr Foo(int f);
           };""",
           'Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # missing explicit for constexpr+inline constructors is bad as well
       self.TestMultiLineLint(
           """
@@ -1402,14 +1402,14 @@ class CpplintTest(CpplintTestBase):
             constexpr inline Foo(int f);
           };""",
           'Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       self.TestMultiLineLint(
           """
           class Foo {
             inline constexpr Foo(int f);
           };""",
           'Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # explicit with inline is accepted
       self.TestMultiLineLint(
           """
@@ -1468,7 +1468,7 @@ class CpplintTest(CpplintTestBase):
             Foo(int f);
           };""",
           'Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # Templatized classes are caught as well.
       self.TestMultiLineLint(
           """
@@ -1476,7 +1476,7 @@ class CpplintTest(CpplintTestBase):
             Foo(int f);
           };""",
           'Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # inline case for templatized classes.
       self.TestMultiLineLint(
           """
@@ -1484,7 +1484,7 @@ class CpplintTest(CpplintTestBase):
             inline Foo(int f);
           };""",
           'Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # constructors with a default argument should still be marked explicit
       self.TestMultiLineLint(
           """
@@ -1492,7 +1492,7 @@ class CpplintTest(CpplintTestBase):
             Foo(int f = 0);
           };""",
           'Constructors callable with one argument should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # multi-argument constructors with all but one default argument should be
       # marked explicit
       self.TestMultiLineLint(
@@ -1501,7 +1501,7 @@ class CpplintTest(CpplintTestBase):
             Foo(int f, int g = 0);
           };""",
           'Constructors callable with one argument should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # multi-argument constructors with all default arguments should be marked
       # explicit
       self.TestMultiLineLint(
@@ -1510,7 +1510,7 @@ class CpplintTest(CpplintTestBase):
             Foo(int f = 0, int g = 0);
           };""",
           'Constructors callable with one argument should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # explicit no-argument constructors are just fine
       self.TestMultiLineLint(
           """
@@ -1546,7 +1546,7 @@ class CpplintTest(CpplintTestBase):
             Foo(void (*f)(int f, int g));
           };""",
           'Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # single-argument constructors that take a single template argument with
       # multiple parameters should be explicit
       self.TestMultiLineLint(
@@ -1556,7 +1556,7 @@ class CpplintTest(CpplintTestBase):
             Foo(Bar<T, S> b);
           };""",
           'Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # but copy constructors that take multiple template parameters are OK
       self.TestMultiLineLint(
           """
@@ -1709,7 +1709,7 @@ class CpplintTest(CpplintTestBase):
           error_collector)
       self.assertEqual(1, error_collector.ResultList().count(
         'Constructors callable with one argument should be marked explicit.'
-        '  [runtime/explicit] [5]'))
+        '  [runtime/explicit] [4]'))
       error_collector = ErrorCollector(self.assertTrue)
       cpplint.ProcessFileData('foo.cc', 'cc',
           ['class Foo {',
@@ -1719,7 +1719,7 @@ class CpplintTest(CpplintTestBase):
           error_collector)
       self.assertEqual(1, error_collector.ResultList().count(
         'Constructors callable with one argument should be marked explicit.'
-        '  [runtime/explicit] [5]'))
+        '  [runtime/explicit] [4]'))
       # Anything goes inside an assembly block
       error_collector = ErrorCollector(self.assertTrue)
       cpplint.ProcessFileData('foo.cc', 'cc',
@@ -4378,7 +4378,7 @@ class CpplintTest(CpplintTestBase):
       self.TestMultiLineLint(
           test_code,
           ['Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]',
+          '  [runtime/explicit] [4]',
           '{ should almost always be at the end of the previous line'
           '  [whitespace/braces] [4]']
           )
@@ -4401,7 +4401,7 @@ class CpplintTest(CpplintTestBase):
       self.TestMultiLineLint(
           test_code,
           ['Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]',
+          '  [runtime/explicit] [4]',
           '{ should almost always be at the end of the previous line'
           '  [whitespace/braces] [4]']
           )
