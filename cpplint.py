@@ -333,7 +333,6 @@ _ERROR_CATEGORIES = [
     'runtime/invalid_increment',
     'runtime/member_string_references',
     'runtime/memset',
-    'runtime/indentation_namespace',
     'runtime/operator',
     'runtime/printf',
     'runtime/printf_format',
@@ -352,6 +351,7 @@ _ERROR_CATEGORIES = [
     'whitespace/ending_newline',
     'whitespace/forcolon',
     'whitespace/indent',
+    'whitspace/indent_namespace',
     'whitespace/line_length',
     'whitespace/newline',
     'whitespace/operators',
@@ -6370,7 +6370,7 @@ def CheckItemIndentationInNamespace(filename, raw_lines_no_comments, linenum,
                                     error):
   line = raw_lines_no_comments[linenum]
   if Match(r'^\s+', line):
-    error(filename, linenum, 'runtime/indentation_namespace', 4,
+    error(filename, linenum, 'whitspace/indent_namespace', 4,
           'Do not indent within a namespace')
 
 

@@ -12,7 +12,7 @@ src/inspect/unnamed_namespace_check.hpp:19:  Closing ) should be moved to the pr
 src/inspect/unnamed_namespace_check.hpp:21:  Anonymous namespace should be terminated with "// namespace"  [readability/namespace] [5]
 src/inspect/unnamed_namespace_check.hpp:21:  At least two spaces is best between code and comments  [whitespace/comments] [2]
 src/inspect/unnamed_namespace_check.hpp:26:  { should almost always be at the end of the previous line  [whitespace/braces] [4]
-src/inspect/unnamed_namespace_check.hpp:27:  Do not indent within a namespace  [runtime/indentation_namespace] [4]
+src/inspect/unnamed_namespace_check.hpp:27:  Do not indent within a namespace  [whitspace/indent_namespace] [4]
 src/inspect/unnamed_namespace_check.hpp:28:  { should almost always be at the end of the previous line  [whitespace/braces] [4]
 src/inspect/unnamed_namespace_check.hpp:29:  Weird number of spaces at line-start.  Are you using a 2-space indent?  [whitespace/indent] [3]
 src/inspect/unnamed_namespace_check.hpp:30:  Weird number of spaces at line-start.  Are you using a 2-space indent?  [whitespace/indent] [3]
