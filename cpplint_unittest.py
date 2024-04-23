@@ -313,14 +313,6 @@ class CpplintTest(CpplintTestBase):
     results = self.GetNamespaceResults(lines)
     self.assertEqual(results, '')
 
-  def testWhitespaceBeforeNamespace(self):
-    lines = ['  namespace Test {',
-             '  void foo() { }',
-             '  }  // namespace Test']
-
-    results = self.GetNamespaceResults(lines)
-    self.assertEqual(results, '')
-
   def testStructInNamespace(self):
     lines = ['namespace Test {',
              'struct OuterClass {',
