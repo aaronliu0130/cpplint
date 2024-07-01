@@ -4371,13 +4371,13 @@ def CheckBraces(filename, clean_lines, linenum, error):
             '{ should almost always be at the end of the previous line')
 
   # An else clause should be on the same line as the preceding closing brace.
-  if lastWrong := re.match(r'\s*else\b\s*(?:if\b|\{|$)', line):
+  if last_wrong := re.match(r'\s*else\b\s*(?:if\b|\{|$)', line):
     prevline = GetPreviousNonBlankLine(clean_lines, linenum)[0]
     if re.match(r'\s*}\s*$', prevline):
       error(filename, linenum, 'whitespace/newline', 4,
             'An else should appear on the same line as the preceding }')
     else:
-      lastWrong = False
+      last_wrong = False
 
   # If braces come on one side of an else, they should be on both.
   # However, we have to worry about "else if" that spans multiple lines!
@@ -4393,7 +4393,7 @@ def CheckBraces(filename, clean_lines, linenum, error):
         error(filename, linenum, 'readability/braces', 5,
               'If an else has a brace on one side, it should have it on both')
   # Prevent detection if statement has { and we detected an improper newline after }
-  elif re.search(r'}\s*else[^{]*$', line) or (re.match(r'[^}]*else\s*{', line) and not lastWrong):
+  elif re.search(r'}\s*else[^{]*$', line) or (re.match(r'[^}]*else\s*{', line) and not last_wrong):
     error(filename, linenum, 'readability/braces', 5,
           'If an else has a brace on one side, it should have it on both')
 
