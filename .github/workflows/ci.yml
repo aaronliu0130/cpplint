@@ -1,8 +1,10 @@
 name: Test
 on:
   pull_request:
+    paths-ignore: "*.rst"
   push:
     paths-ignore: "*.rst"
+    branches: [master, develop]
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true

@@ -39,8 +39,12 @@ To install cpplint from PyPI, run:
 
     $ pip install cpplint
 
-Then run it with:
+Externally managed environments
+-------------------------------
+If you get the "This environment is externally managed" error, try to search and install cpplint with your system's package manager (e.g. apt, rpm, pacman...). If it doesn't exist, you can either package cpplint for your distribution or repeat the steps above with the :code:`--break-system-packages` flag.
 
+Usage
+-----
 .. code-block:: bash
 
     $ cpplint [OPTIONS] files
@@ -63,7 +67,7 @@ Changes
 * JUnit XML output format
 * Overriding repository root auto-detection via --repository
 * Support ``#pragma once`` as an alternative to header include guards
-* ... and `quite a bit <https://github.com/cpplint/cpplint/blob/master/changelog.rst>`_ more
+* ... and `quite a bit <https://github.com/cpplint/cpplint/blob/master/CHANGELOG.rst>`_ more
 
 Acknowledgements
 ================

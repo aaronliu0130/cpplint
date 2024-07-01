@@ -130,8 +130,6 @@ class CpplintTestBase(unittest.TestCase):
   def setUp(self):
     # Allow subclasses to cheat os.path.abspath called in FileInfo class.
     self.os_path_abspath_orig = os.path.abspath
-    self.assertEqual = self.assertEqual
-    self.assertTrue = self.assertTrue
 
   def tearDown(self):
     os.path.abspath = self.os_path_abspath_orig
@@ -290,16 +288,16 @@ class CpplintTest(CpplintTestBase):
 
     return error_collector.Results()
 
-  def testForwardDeclarationNameSpaceIndentation(self):
+  def testForwardDeclarationNamespaceIndentation(self):
     lines = ['namespace Test {',
              '  class ForwardDeclaration;',
              '}  // namespace Test']
 
     results = self.GetNamespaceResults(lines)
-    self.assertEqual(results, 'Do not indent within a namespace '
-                      ' [runtime/indentation_namespace] [4]')
+    self.assertEqual(results, 'Do not indent within a namespace. '
+                      ' [whitespace/indent_namespace] [4]')
 
-  def testNameSpaceIndentationForClass(self):
+  def testNamespaceIndentationForClass(self):
     lines = ['namespace Test {',
              'void foo() { }',
              '  class Test {',
@@ -307,10 +305,12 @@ class CpplintTest(CpplintTestBase):
              '}  // namespace Test']
 
     results = self.GetNamespaceResults(lines)
-    self.assertEqual(results, 'Do not indent within a namespace '
-                      ' [runtime/indentation_namespace] [4]')
+    self.assertEqual(results, ['Do not indent within a namespace. '
+                      ' [whitespace/indent_namespace] [4]', 
+                      'Do not indent within a namespace. '
+                      ' [whitespace/indent_namespace] [4]'])
 
-  def testNameSpaceIndentationNoError(self):
+  def testNamespaceIndentationNoError(self):
     lines = ['namespace Test {',
              'void foo() { }',
              '}  // namespace Test']
@@ -318,20 +318,15 @@ class CpplintTest(CpplintTestBase):
     results = self.GetNamespaceResults(lines)
     self.assertEqual(results, '')
 
-  def testWhitespaceBeforeNamespace(self):
-    lines = ['  namespace Test {',
-             '  void foo() { }',
-             '  }  // namespace Test']
-
-    results = self.GetNamespaceResults(lines)
-    self.assertEqual(results, '')
-
-  def testFalsePositivesNoError(self):
+  def testNestingInNamespace(self):
     lines = ['namespace Test {',
              'struct OuterClass {',
              '  struct NoFalsePositivesHere;',
              '  struct NoFalsePositivesHere member_variable;',
              '};',
+             'void foo() {',
+             '  const int no_positives_eh = 418;',
+             '}',
              '}  // namespace Test']
 
     results = self.GetNamespaceResults(lines)
@@ -590,6 +585,97 @@ class CpplintTest(CpplintTestBase):
                              ''],
                             error_collector)
     self.assertEqual('', error_collector.Results())
+    # NOLINTBEGIN and silences all warnings after it
+    error_collector = ErrorCollector(self.assertTrue)
+    cpplint.ProcessFileData('test.cc', 'cc',
+                            ['// Copyright 2014 Your Company.',
+                             '// NOLINTBEGIN',
+                             'long a = (int64) 65;'
+                             'long a = 65;',
+                             '//  ./command' + (' -verbose' * 80)],
+                            error_collector)
+    self.assertEqual('', error_collector.Results())
+    error_collector = ErrorCollector(self.assertTrue)
+    cpplint.ProcessFileData('test.cc', 'cc',
+                            ['// Copyright 2014 Your Company.',
+                             '// NOLINTBEGIN(*)',
+                             'long a = (int64) 65;'
+                             'long a = 65;',
+                             '//  ./command' + (' -verbose' * 80)],
+                            error_collector)
+    self.assertEqual('', error_collector.Results())
+    # NOLINTEND will show warnings after that point
+    error_collector = ErrorCollector(self.assertTrue)
+    cpplint.ProcessFileData('test.cc', 'cc',
+                            ['// Copyright 2014 Your Company.',
+                             '// NOLINTBEGIN',
+                             'long a = (int64) 65;'
+                             'long a = 65;',
+                             '// NOLINTEND',
+                             '//  ./command' + (' -verbose' * 80),
+                             ''],
+                            error_collector)
+    self.assertEqual('Lines should be <= 80 characters long  '
+                      '[whitespace/line_length] [2]', error_collector.Results())
+    # NOLINTBEGIN(category) silences category warnings after it
+    error_collector = ErrorCollector(self.assertTrue)
+    cpplint.ProcessFileData('test.cc', 'cc',
+                            ['// Copyright 2014 Your Company.',
+                             '// NOLINTBEGIN(readability/casting,runtime/int)',
+                             'long a = (int64) 65;',
+                             'long a = 65;',
+                             '//  ./command' + (' -verbose' * 80),
+                             '// NOLINTEND',
+                             ''],
+                            error_collector)
+    self.assertEqual('Lines should be <= 80 characters long  '
+                      '[whitespace/line_length] [2]',
+                      error_collector.Results())
+    # NOLINTEND(category) will generate an error that categories are not supported
+    error_collector = ErrorCollector(self.assertTrue)
+    cpplint.ProcessFileData('test.cc', 'cc',
+                            ['// Copyright 2014 Your Company.',
+                             '// NOLINTBEGIN(readability/casting,runtime/int)',
+                             'long a = (int64) 65;',
+                             'long a = 65;',
+                             '// NOLINTEND(readability/casting)',
+                             ''],
+                            error_collector)
+    self.assertEqual('NOLINT categories not supported in block END: readability/casting  '
+                      '[readability/nolint] [5]',
+                      error_collector.Results())
+    # nested NOLINTBEGIN is not allowed
+    error_collector = ErrorCollector(self.assertTrue)
+    cpplint.ProcessFileData('test.cc', 'cc',
+                            ['// Copyright 2014 Your Company.',
+                             '// NOLINTBEGIN(readability/casting,runtime/int)',
+                             'long a = (int64) 65;',
+                             '// NOLINTBEGIN(runtime/int)',
+                             'long a = 65;',
+                             '// NOLINTEND(*)',
+                             ''],
+                            error_collector)
+    self.assertEqual('NONLINT block already defined on line 2  '
+                      '[readability/nolint] [5]', error_collector.Results())
+    # error if NOLINGBEGIN is not ended
+    error_collector = ErrorCollector(self.assertTrue)
+    cpplint.ProcessFileData('test.cc', 'cc',
+                            ['// Copyright 2014 Your Company.',
+                             '// NOLINTBEGIN(readability/casting,runtime/int)',
+                             'long a = (int64) 65;',
+                             'long a = 65;',
+                             ''],
+                            error_collector)
+    self.assertEqual('NONLINT block never ended  [readability/nolint] [5]', error_collector.Results())
+    # error if unmatched NOLINTEND
+    self.TestLint(
+        '// NOLINTEND',
+        'Not in a NOLINT block  '
+        '[readability/nolint] [5]')
+    self.TestLint(
+        '// NOLINTEND(*)',
+        'Not in a NOLINT block  '
+        '[readability/nolint] [5]')
 
   # Test Variable Declarations.
   def testVariableDeclarations(self):
@@ -1059,7 +1145,12 @@ class CpplintTest(CpplintTestBase):
         '[build/include_what_you_use] [4]')
     self.TestIncludeWhatYouUse(
         """#include "base/foobar.h"
-           bool foobar = min_element(a.begin(), a.end());
+           boost::range::transform(input, std::back_inserter(output), square);
+        """,
+        '') # Avoid false positives on transform in other namespaces.
+    self.TestIncludeWhatYouUse(
+        """#include "base/foobar.h"
+           bool foobar = std::min_element(a.begin(), a.end());
         """,
         'Add #include <algorithm> for min_element  '
         '[build/include_what_you_use] [4]')
@@ -1161,6 +1252,12 @@ class CpplintTest(CpplintTestBase):
         struct Bar {
         };
         auto res = map<Bar>();
+        """,
+        '')
+    # False positive for boost::container::set
+    self.TestIncludeWhatYouUse(
+        """
+        boost::container::set<int> foo;
         """,
         '')
 
@@ -1355,7 +1452,7 @@ class CpplintTest(CpplintTestBase):
             Foo(int f);
           };""",
           'Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # missing explicit is bad, even with whitespace
       self.TestMultiLineLint(
           """
@@ -1364,7 +1461,7 @@ class CpplintTest(CpplintTestBase):
           };""",
           ['Extra space before ( in function call  [whitespace/parens] [4]',
            'Single-parameter constructors should be marked explicit.'
-           '  [runtime/explicit] [5]'])
+           '  [runtime/explicit] [4]'])
       # missing explicit, with distracting comment, is still bad
       self.TestMultiLineLint(
           """
@@ -1372,7 +1469,7 @@ class CpplintTest(CpplintTestBase):
             Foo(int f);  // simpler than Foo(blargh, blarg)
           };""",
           'Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # missing explicit, with qualified classname
       self.TestMultiLineLint(
           """
@@ -1380,7 +1477,7 @@ class CpplintTest(CpplintTestBase):
             Foo(int f);
           };""",
           'Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # missing explicit for inline constructors is bad as well
       self.TestMultiLineLint(
           """
@@ -1388,7 +1485,7 @@ class CpplintTest(CpplintTestBase):
             inline Foo(int f);
           };""",
           'Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # missing explicit for constexpr constructors is bad as well
       self.TestMultiLineLint(
           """
@@ -1396,7 +1493,7 @@ class CpplintTest(CpplintTestBase):
             constexpr Foo(int f);
           };""",
           'Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # missing explicit for constexpr+inline constructors is bad as well
       self.TestMultiLineLint(
           """
@@ -1404,14 +1501,14 @@ class CpplintTest(CpplintTestBase):
             constexpr inline Foo(int f);
           };""",
           'Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       self.TestMultiLineLint(
           """
           class Foo {
             inline constexpr Foo(int f);
           };""",
           'Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # explicit with inline is accepted
       self.TestMultiLineLint(
           """
@@ -1470,7 +1567,7 @@ class CpplintTest(CpplintTestBase):
             Foo(int f);
           };""",
           'Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # Templatized classes are caught as well.
       self.TestMultiLineLint(
           """
@@ -1478,7 +1575,7 @@ class CpplintTest(CpplintTestBase):
             Foo(int f);
           };""",
           'Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # inline case for templatized classes.
       self.TestMultiLineLint(
           """
@@ -1486,7 +1583,7 @@ class CpplintTest(CpplintTestBase):
             inline Foo(int f);
           };""",
           'Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # constructors with a default argument should still be marked explicit
       self.TestMultiLineLint(
           """
@@ -1494,7 +1591,7 @@ class CpplintTest(CpplintTestBase):
             Foo(int f = 0);
           };""",
           'Constructors callable with one argument should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # multi-argument constructors with all but one default argument should be
       # marked explicit
       self.TestMultiLineLint(
@@ -1503,7 +1600,7 @@ class CpplintTest(CpplintTestBase):
             Foo(int f, int g = 0);
           };""",
           'Constructors callable with one argument should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # multi-argument constructors with all default arguments should be marked
       # explicit
       self.TestMultiLineLint(
@@ -1512,23 +1609,21 @@ class CpplintTest(CpplintTestBase):
             Foo(int f = 0, int g = 0);
           };""",
           'Constructors callable with one argument should be marked explicit.'
-          '  [runtime/explicit] [5]')
-      # explicit no-argument constructors are bad
+          '  [runtime/explicit] [4]')
+      # explicit no-argument constructors are just fine
       self.TestMultiLineLint(
           """
           class Foo {
             explicit Foo();
           };""",
-          'Zero-parameter constructors should not be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '')
       # void constructors are considered no-argument
       self.TestMultiLineLint(
           """
           class Foo {
             explicit Foo(void);
           };""",
-          'Zero-parameter constructors should not be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '')
       # No warning for multi-parameter constructors
       self.TestMultiLineLint(
           """
@@ -1550,7 +1645,7 @@ class CpplintTest(CpplintTestBase):
             Foo(void (*f)(int f, int g));
           };""",
           'Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # single-argument constructors that take a single template argument with
       # multiple parameters should be explicit
       self.TestMultiLineLint(
@@ -1560,7 +1655,7 @@ class CpplintTest(CpplintTestBase):
             Foo(Bar<T, S> b);
           };""",
           'Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]')
+          '  [runtime/explicit] [4]')
       # but copy constructors that take multiple template parameters are OK
       self.TestMultiLineLint(
           """
@@ -1713,7 +1808,7 @@ class CpplintTest(CpplintTestBase):
           error_collector)
       self.assertEqual(1, error_collector.ResultList().count(
         'Constructors callable with one argument should be marked explicit.'
-        '  [runtime/explicit] [5]'))
+        '  [runtime/explicit] [4]'))
       error_collector = ErrorCollector(self.assertTrue)
       cpplint.ProcessFileData('foo.cc', 'cc',
           ['class Foo {',
@@ -1723,7 +1818,7 @@ class CpplintTest(CpplintTestBase):
           error_collector)
       self.assertEqual(1, error_collector.ResultList().count(
         'Constructors callable with one argument should be marked explicit.'
-        '  [runtime/explicit] [5]'))
+        '  [runtime/explicit] [4]'))
       # Anything goes inside an assembly block
       error_collector = ErrorCollector(self.assertTrue)
       cpplint.ProcessFileData('foo.cc', 'cc',
@@ -3278,12 +3373,10 @@ class CpplintTest(CpplintTestBase):
     # you can see by evaluating codecs.getencoder('utf8')(u'\ufffd')).
     DoTest(self, codecs_latin_encode('\xef\xbf\xbd\n'), True)
 
-  @unittest.skipIf(platform.system() == 'Windows',
-                   'Skipping test on Windows because it hangs')
   def testBadCharacters(self):
     # Test for NUL bytes only
     error_collector = ErrorCollector(self.assertTrue)
-    cpplint.ProcessFileData('nul.cc', 'cc',
+    cpplint.ProcessFileData('nul_input.cc', 'cc',
                             ['// Copyright 2014 Your Company.',
                              '\0', ''], error_collector)
     self.assertEqual(
@@ -4410,7 +4503,7 @@ class CpplintTest(CpplintTestBase):
       self.TestMultiLineLint(
           test_code,
           ['Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]',
+          '  [runtime/explicit] [4]',
           '{ should almost always be at the end of the previous line'
           '  [whitespace/braces] [4]']
           )
@@ -4433,7 +4526,7 @@ class CpplintTest(CpplintTestBase):
       self.TestMultiLineLint(
           test_code,
           ['Single-parameter constructors should be marked explicit.'
-          '  [runtime/explicit] [5]',
+          '  [runtime/explicit] [4]',
           '{ should almost always be at the end of the previous line'
           '  [whitespace/braces] [4]']
           )
@@ -5006,12 +5099,18 @@ class CpplintTest(CpplintTestBase):
     self.assertEqual(['a', 'b', 'c', 'd'],
                       cpplint.PathSplitToList(os.path.join('a', 'b', 'c', 'd')))
 
-  @unittest.skipIf(platform.system() == 'Windows',
-                   'Skipping test on Windows because realpath can fail if mkdtemp uses D:')
   def testBuildHeaderGuardWithRepository(self):
     temp_directory = os.path.realpath(tempfile.mkdtemp())
     temp_directory2 = os.path.realpath(tempfile.mkdtemp())
+
+    # On Windows, os.path.relpath fails when the input is on
+    # a different drive than the current drive.
+    # In GitHub Actions CI, TEMP is set to C: drive, while the
+    # repository clone is on D: drive.
+    current_directory = os.getcwd()
     try:
+      os.chdir(temp_directory)
+
       os.makedirs(os.path.join(temp_directory, ".svn"))
       trunk_dir = os.path.join(temp_directory, "trunk")
       os.makedirs(trunk_dir)
@@ -5049,6 +5148,7 @@ class CpplintTest(CpplintTestBase):
                         cpplint.GetHeaderGuardCPPVariable(file_path))
 
     finally:
+      os.chdir(current_directory)
       shutil.rmtree(temp_directory)
       shutil.rmtree(temp_directory2)
       cpplint._repository = None
@@ -5308,9 +5408,6 @@ class CxxTest(CpplintTestBase):
 
 
 class CleansedLinesTest(unittest.TestCase):
-
-  def setUp(self):
-    self.assertEqual = self.assertEqual
 
   def testInit(self):
     lines = ['Line 1',
@@ -6048,7 +6145,6 @@ def TrimExtraIndent(text_block):
 class CloseExpressionTest(unittest.TestCase):
 
   def setUp(self):
-    self.assertEqual = self.assertEqual
     self.lines = cpplint.CleansedLines(
         #           1         2         3         4         5
         # 0123456789012345678901234567890123456789012345678901234567890
@@ -6121,7 +6217,6 @@ class NestingStateTest(unittest.TestCase):
   def setUp(self):
     self.nesting_state = cpplint.NestingState()
     self.error_collector = ErrorCollector(self.assertTrue)
-    self.assertEqual = self.assertEqual
 
   def UpdateWithLines(self, lines):
     clean_lines = cpplint.CleansedLines(lines)
@@ -6504,7 +6599,6 @@ class QuietTest(unittest.TestCase):
     self.python_executable = sys.executable or 'python'
     self.cpplint_test_h = os.path.join(self.this_dir_path,
                                        'cpplint_test_header.h')
-    self.assertEqual = self.assertEqual
     open(self.cpplint_test_h, 'w').close()
 
   def tearDown(self):
