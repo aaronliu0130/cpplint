@@ -46,7 +46,7 @@ from __future__ import annotations
 import codecs
 import collections
 import copy
-import getopt  # pylint: disable=deprecated-module
+import getopt
 import glob
 import itertools
 import math  # for log
