@@ -3097,6 +3097,14 @@ class _ClassInfo(_BlockInfo):
             )
 
 
+class _ConstructorInfo(_BlockInfo):
+    """Stores information about a constructor.
+    For detecting member initializer lists."""
+
+    def __init__(self, linenum: int):
+        _BlockInfo.__init__(self, linenum, seen_open_brace=False)
+
+
 class _NamespaceInfo(_BlockInfo):
     """Stores information about a namespace."""
 
@@ -3174,6 +3182,22 @@ class _NamespaceInfo(_BlockInfo):
                     )
 
 
+class _WrappedInfo(_BlockInfo):
+    """Stores information about parentheses, initializer lists, etc.
+    Not exactly a block but we do need the same signature.
+    Needed to avoid namespace indentation false positives,
+    though parentheses tracking would slow us down a lot
+    and is effectively already done by open_parentheses."""
+
+    pass
+
+
+class _MemInitListInfo(_WrappedInfo):
+    """Stores information about member initializer lists."""
+
+    pass
+
+
 class _PreprocessorInfo:
     """Stores checkpoints of nesting stacks when #if/#else is seen."""
 
@@ -3215,6 +3239,9 @@ class NestingState:
         # Used to prevent false indentation detection when e.g. a function parameter is indented.
         # We can't use previous_stack_top, a shallow copy whose open_parentheses value is updated.
         self.previous_open_parentheses = 0
+
+        # The last stack item we popped.
+        self.popped_top: _BlockInfo | None = None
 
         # Stack of _PreprocessorInfo objects.
         self.pp_stack = []
@@ -3370,6 +3397,9 @@ class NestingState:
                 # TODO(google): unexpected #endif, issue warning?
                 pass
 
+    def _Pop(self):
+        """Pop the innermost state (top of the stack) and remember the popped item."""
+        self.popped_top = self.stack.pop()
 
     def _CountOpenParentheses(self, line: str):
         # Count parentheses.  This is to avoid adding struct arguments to
@@ -3422,6 +3452,22 @@ class NestingState:
             new_namespace.seen_open_brace = True
             line = line[line.find("{") + 1 :]
         return line
+
+    def _UpdateConstructor(self, line: str, linenum: int, class_name: str | None = None):
+        """
+        Check if the given line is a constructor.
+        Args:
+            line: Line to check.
+            class_name: If line checked is inside of a class block, a str of the class's name;
+                otherwise, None.
+        """
+        if not class_name:
+            if not re.match(r"\s*(\w*)\s*::\s*\1\s*\(", line):
+                return
+        elif not re.match(rf"\s*{re.escape(class_name)}\s*\(", line):
+            return
+
+        self.stack.append(_ConstructorInfo(linenum))
 
     # TODO(google): Update() is too long, but we will refactor later.
     def Update(self, filename: str, clean_lines: CleansedLines, linenum: int, error):
@@ -3492,36 +3538,56 @@ class NestingState:
         if not self.SeenOpenBrace():
             self.stack[-1].CheckBegin(filename, clean_lines, linenum, error)
 
-        # Update access control if we are inside a class/struct
+        # Update access control if we are directly inside a class/struct
         if self.stack and isinstance(self.stack[-1], _ClassInfo):
-            classinfo = self.stack[-1]
-            access_match = re.match(
-                r"^(.*)\b(public|private|protected|signals)(\s+(?:slots\s*)?)?"
-                r":(?:[^:]|$)",
-                line,
-            )
-            if access_match:
-                classinfo.access = access_match.group(2)
+            if self.stack[-1].seen_open_brace:
+                classinfo: _ClassInfo = self.stack[-1]
+                # Update access control
+                if access_match := re.match(
+                    r"^(.*)\b(public|private|protected|signals)(\s+(?:slots\s*)?)?"
+                    r":([^:].*|$)",
+                    line,
+                ):
+                    classinfo.access = access_match.group(2)
 
-                # Check that access keywords are indented +1 space.  Skip this
-                # check if the keywords are not preceded by whitespaces.
-                indent = access_match.group(1)
-                if len(indent) != classinfo.class_indent + 1 and re.match(r"^\s*$", indent):
-                    if classinfo.is_struct:
-                        parent = "struct " + classinfo.name
-                    else:
-                        parent = "class " + classinfo.name
-                    slots = ""
-                    if access_match.group(3):
-                        slots = access_match.group(3)
-                    error(
-                        filename,
-                        linenum,
-                        "whitespace/indent",
-                        3,
-                        f"{access_match.group(2)}{slots}:"
-                        f" should be indented +1 space inside {parent}",
-                    )
+                    # Check that access keywords are indented +1 space.  Skip this
+                    # check if the keywords are not preceded by whitespaces.
+                    indent = access_match.group(1)
+                    if len(indent) != classinfo.class_indent + 1 and re.match(r"^\s*$", indent):
+                        if classinfo.is_struct:
+                            parent = "struct " + classinfo.name
+                        else:
+                            parent = "class " + classinfo.name
+                        slots = ""
+                        if access_match.group(3):
+                            slots = access_match.group(3)
+                        error(
+                            filename,
+                            linenum,
+                            "whitespace/indent",
+                            3,
+                            f"{access_match.group(2)}{slots}:"
+                            f" should be indented +1 space inside {parent}",
+                        )
+
+                    line = access_match.group(4)
+                else:
+                    self._UpdateConstructor(line, linenum, class_name=classinfo.name)
+        else:  # Not in class
+            self._UpdateConstructor(line, linenum)
+
+        # If brace not open and we just finished a parenthetical definition,
+        # check if we're in a member initializer list following a constructor.
+        if (
+            self.stack
+            and (
+                isinstance(self.stack[-1], _ConstructorInfo)
+                or isinstance(self.previous_stack_top, _ConstructorInfo)
+            )
+            and not self.stack[-1].seen_open_brace
+            and re.search(r"[^:]:[^:]", line)
+        ):
+            self.stack.append(_MemInitListInfo(linenum, seen_open_brace=False))
 
         # Consume braces or semicolons from what's left of the line
         while True:
@@ -3532,10 +3598,13 @@ class NestingState:
 
             token = matched.group(1)
             if token == "{":
-                # If namespace or class hasn't seen a opening brace yet, mark
+                # If namespace or class hasn't seen an opening brace yet, mark
                 # namespace/class head as complete.  Push a new block onto the
                 # stack otherwise.
                 if not self.SeenOpenBrace():
+                    # End of initializer list wrap if present
+                    if isinstance(self.stack[-1], _MemInitListInfo):
+                        self._Pop()
                     self.stack[-1].seen_open_brace = True
                 elif re.match(r'^extern\s*"[^"]*"\s*\{', line):
                     self.stack.append(_ExternCInfo(linenum))
@@ -3543,23 +3612,28 @@ class NestingState:
                     self.stack.append(_BlockInfo(linenum, True))
                     if _MATCH_ASM.match(line):
                         self.stack[-1].inline_asm = _BLOCK_ASM
-
-            elif token in {";", ")"}:
+            elif token == ";":
                 # If we haven't seen an opening brace yet, but we already saw
                 # a semicolon, this is probably a forward declaration.  Pop
                 # the stack for these.
-                #
+                if not self.SeenOpenBrace():
+                    self._Pop()
+            elif token == ")":
                 # Similarly, if we haven't seen an opening brace yet, but we
                 # already saw a closing parenthesis, then these are probably
                 # function arguments with extra "class" or "struct" keywords.
                 # Also pop these stack for these.
-                if not self.SeenOpenBrace():
-                    self.stack.pop()
+                if (
+                    self.stack
+                    and not self.stack[-1].seen_open_brace
+                    and isinstance(self.stack[-1], _ClassInfo)
+                ):
+                    self._Pop()
             else:  # token == '}'
                 # Perform end of block checks and pop the stack.
                 if self.stack:
                     self.stack[-1].CheckEnd(filename, clean_lines, linenum, error)
-                    self.stack.pop()
+                    self._Pop()
             line = matched.group(2)
 
     def InnermostClass(self):
@@ -7097,11 +7171,11 @@ def CheckRedundantOverrideOrFinal(filename, clean_lines, linenum, error):
 
 # Returns true if we are at a new block, and it is directly
 # inside of a namespace.
-def IsBlockInNameSpace(nesting_state, is_forward_declaration):
+def IsBlockInNameSpace(nesting_state: NestingState, is_forward_declaration: bool):  # noqa: FBT001
     """Checks that the new block is directly in a namespace.
 
     Args:
-      nesting_state: The _NestingState object that contains info about our state.
+      nesting_state: The NestingState object that contains info about our state.
       is_forward_declaration: If the class is a forward declared class.
     Returns:
       Whether or not the new block is directly in a namespace.
@@ -7117,7 +7191,13 @@ def IsBlockInNameSpace(nesting_state, is_forward_declaration):
         if (
             len(nesting_state.stack) > 1
             and isinstance(nesting_state.previous_stack_top, _NamespaceInfo)
-            and isinstance(nesting_state.stack[-2], _NamespaceInfo)
+            and (
+                isinstance(nesting_state.stack[-2], _NamespaceInfo)
+                or len(nesting_state.stack) > 2  # Accommodate for WrappedInfo
+                and issubclass(type(nesting_state.stack[-1]), _WrappedInfo)
+                and not nesting_state.stack[-2].seen_open_brace
+                and isinstance(nesting_state.stack[-3], _NamespaceInfo)
+            )
         ):
             return True
     return False
@@ -7141,6 +7221,10 @@ def ShouldCheckNamespaceIndentation(
       only works for classes and namespaces inside of a namespace.
     """
 
+    # Required by all checks involving nesting_state
+    if not nesting_state.stack:
+        return False
+
     is_forward_declaration = IsForwardClassDeclaration(raw_lines_no_comments, linenum)
 
     if not (is_namespace_indent_item or is_forward_declaration):
@@ -7152,6 +7236,20 @@ def ShouldCheckNamespaceIndentation(
 
     # Skip if we are inside an open parenthesis block (e.g. function parameters).
     if nesting_state.previous_stack_top and nesting_state.previous_open_parentheses > 0:
+        return False
+
+    # Skip if we are extra-indenting a member initializer list.
+    if (
+        isinstance(nesting_state.previous_stack_top, _ConstructorInfo)  # F/N (A::A() : _a(0) {/{})
+        and (
+            isinstance(nesting_state.stack[-1], _MemInitListInfo)
+            or isinstance(nesting_state.popped_top, _MemInitListInfo)
+        )
+    ) or (  # popping constructor after MemInitList on the same line (: _a(a) {})
+        isinstance(nesting_state.previous_stack_top, _ConstructorInfo)
+        and isinstance(nesting_state.popped_top, _ConstructorInfo)
+        and re.search(r"[^:]:[^:]", raw_lines_no_comments[linenum])
+    ):
         return False
 
     return IsBlockInNameSpace(nesting_state, is_forward_declaration)

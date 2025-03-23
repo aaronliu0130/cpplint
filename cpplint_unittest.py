@@ -323,6 +323,54 @@ class TestCpplint(CpplintTestBase):
         results = self.GetNamespaceResults(lines)
         assert results == ""
 
+    def testNamespaceIndentationMemberInitializerList(self):
+        lines = [
+            "namespace Opossum {",
+            "",
+            "Acme::Acme(const std::shared_ptr<const AbstractOperator> left,",
+            "           const std::shared_ptr<const AbstractOperator> nigh)",
+            "    : _left(left), _behind(nigh) {}",
+            "",
+            "}  // namespace Opossum",
+        ]
+        assert self.GetNamespaceResults(lines) == ""
+
+        # Multiline member initializer List
+        lines = [
+            "namespace Rosenfield {",
+            "class Crush : public Habitual {",
+            " public:",
+            "  Crush() : _a(1),",
+            "            _b(2)",
+            "       {}",
+            "};",
+            "}  // namespace Rosenfield",
+        ]
+        assert self.GetNamespaceResults(lines) == ""
+
+        # Same line as constructor declaration
+        lines = [
+            "namespace Boucher {",
+            "   X::X() : _s(2) {}",
+            "   A::A() : _e(12) {",
+        ]
+        assert self.GetNamespaceResults(lines) == [
+            "Do not indent within a namespace.  [whitespace/indent_namespace] [4]",
+            "Do not indent within a namespace.  [whitespace/indent_namespace] [4]",
+        ]
+
+        # Definition on indented line
+        lines = [
+            "namespace Store {",
+            "",
+            "   Color::Color() : my_name_is('b')",
+            "       this_is_true(true) {",
+        ]
+        assert (
+            self.GetNamespaceResults(lines)
+            == "Do not indent within a namespace.  [whitespace/indent_namespace] [4]"
+        )
+
     def testNestingInNamespace(self):
         lines = [
             "namespace Test {",
