@@ -3198,7 +3198,7 @@ class NestingState:
         # - _ClassInfo: a class or struct.
         # - _NamespaceInfo: a namespace.
         # - _BlockInfo: some other type of block.
-        self.stack = []
+        self.stack: list[_BlockInfo] = []
 
         # Top of the previous stack before each Update().
         #
@@ -3209,7 +3209,7 @@ class NestingState:
         #
         # We could save the full stack, but we only need the top.  Copying
         # the full nesting stack would slow down cpplint by ~10%.
-        self.previous_stack_top = []
+        self.previous_stack_top: _BlockInfo | None = None
 
         # The number of open parentheses in the previous stack top before the last update.
         # Used to prevent false indentation detection when e.g. a function parameter is indented.
@@ -3370,32 +3370,8 @@ class NestingState:
                 # TODO(google): unexpected #endif, issue warning?
                 pass
 
-    # TODO(google): Update() is too long, but we will refactor later.
-    def Update(self, filename, clean_lines, linenum, error):
-        """Update nesting state with current line.
 
-        Args:
-          filename: The name of the current file.
-          clean_lines: A CleansedLines instance containing the file.
-          linenum: The number of the line to check.
-          error: The function to call with any errors found.
-        """
-        line = clean_lines.elided[linenum]
-
-        # Remember top of the previous nesting stack.
-        #
-        # The stack is always pushed/popped and not modified in place, so
-        # we can just do a shallow copy instead of copy.deepcopy.  Using
-        # deepcopy would slow down cpplint by ~28%.
-        if self.stack:
-            self.previous_stack_top = self.stack[-1]
-            self.previous_open_parentheses = self.stack[-1].open_parentheses
-        else:
-            self.previous_stack_top = None
-
-        # Update pp_stack
-        self.UpdatePreprocessor(line)
-
+    def _CountOpenParentheses(self, line: str):
         # Count parentheses.  This is to avoid adding struct arguments to
         # the nesting stack.
         if self.stack:
@@ -3420,25 +3396,66 @@ class NestingState:
                 # Exit assembly block
                 inner_block.inline_asm = _END_ASM
 
+    def _UpdateNamesapce(self, line: str, linenum: int) -> str | None:
+        """
+        Match start of namespace, append to stack, and consume line
+        Args:
+            line: Line to check and consume
+            linenum: Line number of the line to check
+
+        Returns:
+        The consumed line if namespace matched; None otherwise
+        """
+        # Match start of namespace.  The "\b\s*" below catches namespace
+        # declarations even if it weren't followed by a whitespace, this
+        # is so that we don't confuse our namespace checker.  The
+        # missing spaces will be flagged by CheckSpacing.
+        namespace_decl_match = re.match(r"^\s*namespace\b\s*([:\w]+)?(.*)$", line)
+        if not namespace_decl_match:
+            return None
+
+        new_namespace = _NamespaceInfo(namespace_decl_match.group(1), linenum)
+        self.stack.append(new_namespace)
+
+        line = namespace_decl_match.group(2)
+        if line.find("{") != -1:
+            new_namespace.seen_open_brace = True
+            line = line[line.find("{") + 1 :]
+        return line
+
+    # TODO(google): Update() is too long, but we will refactor later.
+    def Update(self, filename: str, clean_lines: CleansedLines, linenum: int, error):
+        """Update nesting state with current line.
+
+        Args:
+          filename: The name of the current file.
+          clean_lines: A CleansedLines instance containing the file.
+          linenum: The number of the line to check.
+          error: The function to call with any errors found.
+        """
+        line = clean_lines.elided[linenum]
+
+        # Remember top of the previous nesting stack.
+        #
+        # The stack is always pushed/popped and not modified in place, so
+        # we can just do a shallow copy instead of copy.deepcopy.  Using
+        # deepcopy would slow down cpplint by ~28%.
+        if self.stack:
+            self.previous_stack_top = self.stack[-1]
+            self.previous_open_parentheses = self.stack[-1].open_parentheses
+        else:
+            self.previous_stack_top = None
+
+        # Update pp_stack
+        self.UpdatePreprocessor(line)
+
+        self._CountOpenParentheses(line)
+
         # Consume namespace declaration at the beginning of the line.  Do
         # this in a loop so that we catch same line declarations like this:
         #   namespace proto2 { namespace bridge { class MessageSet; } }
-        while True:
-            # Match start of namespace.  The "\b\s*" below catches namespace
-            # declarations even if it weren't followed by a whitespace, this
-            # is so that we don't confuse our namespace checker.  The
-            # missing spaces will be flagged by CheckSpacing.
-            namespace_decl_match = re.match(r"^\s*namespace\b\s*([:\w]+)?(.*)$", line)
-            if not namespace_decl_match:
-                break
-
-            new_namespace = _NamespaceInfo(namespace_decl_match.group(1), linenum)
-            self.stack.append(new_namespace)
-
-            line = namespace_decl_match.group(2)
-            if line.find("{") != -1:
-                new_namespace.seen_open_brace = True
-                line = line[line.find("{") + 1 :]
+        while (new_line := self._UpdateNamesapce(line, linenum)) is not None:  # could be empty str
+            line = new_line
 
         # Look for a class declaration in whatever is left of the line
         # after parsing namespaces.  The regexp accounts for decorated classes
