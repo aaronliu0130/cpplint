@@ -19,7 +19,7 @@ jobs:
           filters: |
             nondoc:
               - '!**/*.rst'
-      - run: echo 'changed={{ steps.changes.outputs.nondoc }}' > "$GITHUB_OUTPUT"
+      - run: echo 'changed=${{ steps.changes.outputs.nondoc }}' > "$GITHUB_OUTPUT"
 
   build-test:
     needs: check-paths
