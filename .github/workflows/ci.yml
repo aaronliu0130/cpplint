@@ -10,6 +10,7 @@ jobs:
   check-paths:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@4
       - uses: dorny/paths-filter@v3
         id: changes
         with:
