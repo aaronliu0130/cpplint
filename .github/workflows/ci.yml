@@ -52,3 +52,6 @@ jobs:
     if: |
       needs.build-test.result == 'success' && needs.build-test.result == 'skipped'
     runs-on: ubuntu-latest
+    steps:
+      - name: Curiosity
+        run: echo "$GITHUB_OUTPUT"
