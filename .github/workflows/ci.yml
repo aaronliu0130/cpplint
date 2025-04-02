@@ -1,21 +1,26 @@
 name: Test
 on:
   pull_request:
-    paths-ignore: "*.rst"
   push:
-    # paths-ignore: "*.rst"
     branches: [master, develop]
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
-  pre-commit:
+  check-paths:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: pipx run pre-commit run --all-files
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            nondoc:
+              - '!**/*.rst'
+      - run: echo 'changed={{ steps.changes.outputs.nondoc }}' > "$GITHUB_OUTPUT"
 
   build-test:
+    needs: check-paths
+    if: needs.check-paths.outputs.changed == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -41,3 +46,9 @@ jobs:
           python -m pip install --editable .[dev]
       - name: Test with tox
         run: tox -e py
+
+  pass:
+    needs: build-test
+    if: |
+      needs.build-test.result == 'success' && needs.build-test.result == 'skipped'
+    runs-on: ubuntu-latest
