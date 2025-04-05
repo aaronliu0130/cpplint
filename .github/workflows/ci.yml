@@ -20,6 +20,9 @@ jobs:
             nondoc:
               - '!**/*.rst'
       - run: echo 'changed=${{ steps.changes.outputs.nondoc }}' >> "$GITHUB_OUTPUT"
+        id: changed
+    outputs:
+      changed: ${{ steps.changed.outputs.changed }}
 
   build-test:
     needs: check-paths
