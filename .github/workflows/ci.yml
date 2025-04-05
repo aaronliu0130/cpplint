@@ -55,8 +55,7 @@ jobs:
 
   pass:
     needs: build-test
-    if: |
-      needs.build-test.result == 'success' && needs.build-test.result == 'skipped'
+    if: needs.build-test.result == 'success' || needs.build-test.result == 'skipped'
     runs-on: ubuntu-latest
     steps:
       - name: Curiosity
