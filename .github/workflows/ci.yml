@@ -55,9 +55,12 @@ jobs:
 
   pass:
     needs: build-test
-    if: needs.build-test.result == 'success' || needs.build-test.result == 'skipped'
+    if: always()
     runs-on: ubuntu-latest
     steps:
+      - name: fail if build-test ran and failed
+        if: ${{ needs.build-test.result == 'failure' }}
+        run: exit 1
       - name: Curiosity
         run: |
           echo "$GITHUB_OUTPUT"
