@@ -42,7 +42,7 @@ dependencies = [  ]
 optional-dependencies.dev = [
   "mypy",
   "parameterized",
-  "pylint==3.3.5",
+  "pylint>=3.3.4",
   "pytest",
   "pytest-cov",
   "pytest-timeout",
