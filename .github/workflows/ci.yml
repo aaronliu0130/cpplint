@@ -1,11 +1,12 @@
 name: Validation
 on:
   pull_request:
+    types: [opened, reopened, synchronize, labeled]
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
-  check-paths:
+  choose-jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: dorny/paths-filter@v4
@@ -25,8 +26,8 @@ jobs:
 
   build-test:
     name: Continuous Integration
-    needs: check-paths
-    if: needs.check-paths.outputs.shouldTest
+    needs: choose-jobs
+    if: needs.choose-jobs.outputs.shouldTest
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -53,9 +54,9 @@ jobs:
 
   changelog:
     name: Changelog requirement
-    needs: check-paths
+    needs: choose-jobs
     if: |
-      needs.check-paths.outputs.needsLog &&
+      needs.choose-jobs.outputs.needsLog &&
       !contains(github.event.pull_request.labels.*.name, 'skip-changelog') &&
       !contains(github.event.pull_request.labels.*.name, 'dependencies') &&
       github.event.pull_request.user.name != 'pre-commit-ci'
@@ -63,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          exit $([[ ${{ needs.check-paths.outputs.changelogged }} == 'true' ]])
+          exit $([[ ${{ needs.choose-jobs.outputs.changelogged }} == 'true' ]])
 
   pass:
     name: Summary
@@ -73,7 +74,7 @@ jobs:
     steps:
       - name: Fail if changelog ran and failed
         if: ${{ needs.changelog.result == 'failure' }}
-        run: echo "Please follow instructions under https://github.com/cpplint/cpplint/blob/crytown/CONTRIBUTING.rst#pull-requests to add a changelog entry\nor request the 'skip-changelog' label if you believe the changes should not be in the changelog."; exit 1
+        run: echo "Please follow instructions under https://github.com/cpplint/cpplint/blob/crytown/CONTRIBUTING.rst#pull-requests to add a changelog entry\nor request the `skip-changelog` label if you believe the changes should not be in the changelog." >> $GITHUB_STEP_SUMMARY; exit 1
       - name: Fail if build-test ran and failed
         if: ${{ needs.build-test.result == 'failure' }}
-        run: echo "Failed required test(s).\nSee https://github.com/cpplint/cpplint/blob/develop/CONTRIBUTING.rst#testing for help on testing."; exit 1
+        run: echo "Failed required test(s).\nSee https://github.com/cpplint/cpplint/blob/develop/CONTRIBUTING.rst#testing for help on testing." >> $GITHUB_STEP_SUMMARY; exit 1
